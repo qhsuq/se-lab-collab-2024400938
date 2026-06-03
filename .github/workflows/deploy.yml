@@ -1,0 +1,29 @@
+name: DevOps CI/CD流水线
+on:
+  push:
+    branches: [main]
+jobs:
+  build_push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取项目代码
+        uses: actions/checkout@v4
+      - name: 安装Python环境执行单元测试
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: 运行单元测试
+        run: |
+          pip install pytest
+          pytest test_app.py
+      - name: 登录DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: 构建+推送镜像（latest+短commit标签）
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/se-web-app:latest .
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/se-web-app:latest ${{ secrets.DOCKERHUB_USERNAME }}/se-web-app:$(git rev-parse --short HEAD)
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/se-web-app:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/se-web-app:$(git rev-parse --short HEAD)
